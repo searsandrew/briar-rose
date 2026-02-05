@@ -2,6 +2,7 @@
 
 namespace Searsandrew\BriarRose;
 
+use Searsandrew\BriarRose\Clients\RestClient;
 use Searsandrew\BriarRose\Clients\RestletClient;
 
 class BriarRoseManager
@@ -44,17 +45,18 @@ class BriarRoseManager
         );
     }
 
-    /**
-     * Placeholder for the future “normal REST API” client.
-     * @todo after RESTlet is stable.
-     */
-    public function rest(): void
+    public function rest(): RestClient
     {
-        /**
-         *  Planned features:
-         *  - REST Record
-         *  - SuiteQL
-         *  - Generic request() with OAuth signing
-         */
+        return new RestClient(
+            account: $this->account,
+            consumerKey: $this->consumerKey,
+            consumerSecret: $this->consumerSecret,
+            tokenId: $this->tokenId,
+            tokenSecret: $this->tokenSecret,
+            restBaseUrl: $this->restBaseUrl,
+            timeout: $this->timeout,
+            connectTimeout: $this->connectTimeout,
+            logRequests: $this->logRequests,
+        );
     }
 }

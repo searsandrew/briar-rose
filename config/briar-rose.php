@@ -5,7 +5,6 @@ return [
     |--------------------------------------------------------------------------
     | NetSuite Account / Realm
     |--------------------------------------------------------------------------
-    | Example: "5802217" or "5802217_SB1"
     */
     'account' => env('NETSUITE_ACCOUNT'),
 
@@ -16,35 +15,37 @@ return [
     */
     'consumer_key' => env('NETSUITE_CONSUMER_KEY'),
     'consumer_secret' => env('NETSUITE_CONSUMER_SECRET'),
-    'token_id' => env('NETSUITE_TOKEN_ID'),
+
+    // Prefer NETSUITE_TOKEN_ID, but allow NETSUITE_TOKEN
+    'token_id' => env('NETSUITE_TOKEN_ID', env('NETSUITE_TOKEN')),
     'token_secret' => env('NETSUITE_TOKEN_SECRET'),
 
     /*
     |--------------------------------------------------------------------------
     | RESTlet
     |--------------------------------------------------------------------------
-    | Working example:
-    | https://0000000.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1850&deploy=1
     */
-    // Optional Override
     'restlet_base_url' => env('NETSUITE_RESTLET_BASE_URL'),
-
-    // If you want a default RESTlet (optional)
     'restlet_script_id' => env('NETSUITE_RESTLET_SCRIPT_ID'),
     'restlet_deploy_id' => env('NETSUITE_RESTLET_DEPLOY_ID', 1),
 
-    // Environment affects hostname patterns (production, or sandbox)
-    'environment' => env('NETSUITE_ENV', 'production'),
+    /*
+    |--------------------------------------------------------------------------
+    | SuiteTalk REST (REST Record + SuiteQL)
+    |--------------------------------------------------------------------------
+    | Optional override. If not set, briar-rose builds:
+    | https://{account}.suitetalk.api.netsuite.com
+    |
+    | Back-compat: NETSUITE_BASE_URL
+    */
+    'rest_base_url' => env('NETSUITE_REST_BASE_URL', env('NETSUITE_BASE_URL')),
 
     /*
     |--------------------------------------------------------------------------
-    | SuiteTalk REST (future expansion)
+    | Environment (for future flexibility)
     |--------------------------------------------------------------------------
-    | @todo Add helpers for:
-    | - REST Record service
-    | - SuiteQL query service
     */
-    'rest_base_url' => env('NETSUITE_REST_BASE_URL'),
+    'environment' => env('NETSUITE_ENV', 'production'), // production|sandbox
 
     /*
     |--------------------------------------------------------------------------
