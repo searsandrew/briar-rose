@@ -12,8 +12,15 @@ class BriarRoseManager
         protected string $consumerSecret,
         protected string $tokenId,
         protected string $tokenSecret,
-        protected string $restletBaseUrl,
-        protected string $restBaseUrl,
+
+        protected ?string $restletBaseUrl,
+        protected ?string $restBaseUrl,
+
+        protected ?string $defaultRestletScriptId = null,
+        protected ?string $defaultRestletDeployId = null,
+
+        protected string $environment = 'production',
+
         protected int $timeout = 30,
         protected int $connectTimeout = 10,
         protected bool $logRequests = false,
@@ -28,6 +35,9 @@ class BriarRoseManager
             tokenId: $this->tokenId,
             tokenSecret: $this->tokenSecret,
             restletBaseUrl: $this->restletBaseUrl,
+            defaultScriptId: $this->defaultRestletScriptId,
+            defaultDeployId: $this->defaultRestletDeployId,
+            environment: $this->environment,
             timeout: $this->timeout,
             connectTimeout: $this->connectTimeout,
             logRequests: $this->logRequests,

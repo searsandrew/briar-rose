@@ -11,13 +11,25 @@ use Searsandrew\BriarRose\Exceptions\BriarRoseConfigurationException;
 
 class RestletClient
 {
+    protected ?string $scriptId = null;
+    protected ?string $deployId = null;
+
     public function __construct(
         protected string $account,
         protected string $consumerKey,
         protected string $consumerSecret,
         protected string $tokenId,
         protected string $tokenSecret,
-        protected string $restletBaseUrl,
+
+        /**
+         * Optional override.
+         * https://{account}.restlets.api.netsuite.com/app/site/hosting/restlet.nl
+         */
+        protected ?string $restletBaseUrl = null,
+
+        protected ?string $defaultScriptId = null,
+        protected ?string $defaultDeployId = '1',
+        protected string $environment = 'production',
         protected int $timeout = 30,
         protected int $connectTimeout = 10,
         protected bool $logRequests = false,
@@ -26,19 +38,86 @@ class RestletClient
     }
 
     /**
-     * Perform a request to the configured NetSuite RESTlet URL.
+     * Set which RESTlet script/deploy to call.
      */
-    public function request(string $method, array $data = []): Response
+    public function script(int|string $scriptId, int|string $deployId = 1): self
     {
-        return $this->send(strtoupper($method), $this->restletBaseUrl, $data);
+        $clone = clone $this;
+        $clone->scriptId = (string) $scriptId;
+        $clone->deployId = (string) $deployId;
+
+        return $clone;
+    }
+
+    public function get(array $query = []): Response
+    {
+        return $this->send('GET', $this->buildUrl(), $query);
+    }
+
+    public function post(array $payload = []): Response
+    {
+        return $this->send('POST', $this->buildUrl(), $payload);
+    }
+
+    public function put(array $payload = []): Response
+    {
+        return $this->send('PUT', $this->buildUrl(), $payload);
+    }
+
+    public function patch(array $payload = []): Response
+    {
+        return $this->send('PATCH', $this->buildUrl(), $payload);
+    }
+
+    public function delete(array $payload = []): Response
+    {
+        // Some RESTlets accept DELETE with a body; some don't.
+        return $this->send('DELETE', $this->buildUrl(), $payload);
     }
 
     /**
-     * Internal method to handle requests with OAuth 1.0 authentication.
+     * Back-compat: do a raw request against either:
+     * - the built URL (script/deploy/default), OR
+     * - a provided URL.
      */
+    public function request(string $method, array $data = [], ?string $url = null): Response
+    {
+        return $this->send(strtoupper($method), $url ?? $this->buildUrl(), $data);
+    }
+
+    protected function buildUrl(): string
+    {
+        // Prefer per-call script/deploy, else default from config
+        $script = $this->scriptId ?? $this->defaultScriptId;
+        $deploy = $this->deployId ?? $this->defaultDeployId;
+
+        // Determine base endpoint
+        $base = $this->restletBaseUrl ?: $this->defaultBaseEndpoint();
+
+        // If base already has query params, we merge/override script/deploy
+        if ($script !== null) {
+            $base = $this->mergeQueryParams($base, [
+                'script' => (string) $script,
+                'deploy' => (string) ($deploy ?? '1'),
+            ]);
+        }
+
+        return $base;
+    }
+
+    protected function defaultBaseEndpoint(): string
+    {
+        // For RESTlets, this hostname format is:
+        $host = $this->account . '.restlets.api.netsuite.com';
+
+        return 'https://' . $host . '/app/site/hosting/restlet.nl';
+    }
+
     protected function send(string $method, string $url, array $data = []): Response
     {
         $method = strtoupper($method);
+
+        // For OAuth signature: include query params for GET, not body payload.
         $authHeader = $this->getAuthHeader($method, $url, $method === 'GET' ? $data : []);
 
         $request = $this->http()->withHeaders([
@@ -49,7 +128,7 @@ class RestletClient
 
         if ($method === 'GET') {
             if (! empty($data)) {
-                $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($data, '', '&', PHP_QUERY_RFC3986);
+                $url = $this->mergeQueryParams($url, $data);
             }
 
             $this->maybeLog($method, $url, $data);
@@ -64,9 +143,6 @@ class RestletClient
         ]);
     }
 
-    /**
-     * Generate the OAuth 1.0 Authorization header.
-     */
     protected function getAuthHeader(string $method, string $url, array $queryParams = []): string
     {
         $oauthParams = [
@@ -106,7 +182,6 @@ class RestletClient
         ]);
 
         $signature = base64_encode(hash_hmac('sha256', $baseString, $signingKey, true));
-
         $oauthParams['oauth_signature'] = $signature;
 
         $headerParts = [];
@@ -125,6 +200,26 @@ class RestletClient
         return Http::timeout($this->timeout)->connectTimeout($this->connectTimeout);
     }
 
+    protected function mergeQueryParams(string $url, array $params): string
+    {
+        $parsed = parse_url($url);
+
+        $existing = [];
+        if (! empty($parsed['query'])) {
+            parse_str($parsed['query'], $existing);
+        }
+
+        $merged = array_merge($existing, $params);
+        $query = http_build_query($merged, '', '&', PHP_QUERY_RFC3986);
+
+        $base =
+            ($parsed['scheme'] ?? 'https') . '://' .
+            ($parsed['host'] ?? '') .
+            ($parsed['path'] ?? '');
+
+        return $query ? $base . '?' . $query : $base;
+    }
+
     protected function guardConfigured(): void
     {
         $missing = [];
@@ -134,7 +229,6 @@ class RestletClient
                      'consumerSecret' => $this->consumerSecret,
                      'tokenId' => $this->tokenId,
                      'tokenSecret' => $this->tokenSecret,
-                     'restletBaseUrl' => $this->restletBaseUrl,
                  ] as $name => $value) {
             if (blank($value)) {
                 $missing[] = $name;

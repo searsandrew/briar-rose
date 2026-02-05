@@ -26,7 +26,15 @@ return [
     | Working example:
     | https://0000000.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1850&deploy=1
     */
+    // Optional Override
     'restlet_base_url' => env('NETSUITE_RESTLET_BASE_URL'),
+
+    // If you want a default RESTlet (optional)
+    'restlet_script_id' => env('NETSUITE_RESTLET_SCRIPT_ID'),
+    'restlet_deploy_id' => env('NETSUITE_RESTLET_DEPLOY_ID', 1),
+
+    // Environment affects hostname patterns (production, or sandbox)
+    'environment' => env('NETSUITE_ENV', 'production'),
 
     /*
     |--------------------------------------------------------------------------

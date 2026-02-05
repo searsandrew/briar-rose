@@ -3,7 +3,6 @@
 namespace Searsandrew\BriarRose;
 
 use Illuminate\Support\ServiceProvider;
-use Searsandrew\BriarRose\Clients\RestletClient;
 
 class BriarRoseServiceProvider extends ServiceProvider
 {
@@ -18,8 +17,11 @@ class BriarRoseServiceProvider extends ServiceProvider
                 consumerSecret: (string) config('briar-rose.consumer_secret'),
                 tokenId: (string) config('briar-rose.token_id'),
                 tokenSecret: (string) config('briar-rose.token_secret'),
-                restletBaseUrl: (string) config('briar-rose.restlet_base_url'),
-                restBaseUrl: (string) config('briar-rose.rest_base_url'),
+                restletBaseUrl: config('briar-rose.restlet_base_url'),
+                restBaseUrl: config('briar-rose.rest_base_url'),
+                defaultRestletScriptId: config('briar-rose.restlet_script_id'),
+                defaultRestletDeployId: config('briar-rose.restlet_deploy_id'),
+                environment: (string) config('briar-rose.environment', 'production'),
                 timeout: (int) config('briar-rose.timeout', 30),
                 connectTimeout: (int) config('briar-rose.connect_timeout', 10),
                 logRequests: (bool) config('briar-rose.log_requests', false),
