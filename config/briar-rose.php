@@ -40,17 +40,12 @@ return [
     */
     'rest_base_url' => env('NETSUITE_REST_BASE_URL', env('NETSUITE_BASE_URL')),
     'rest' => [
-        // Default paging (NetSuite supports limit/offset style pagination)
         'default_limit' => env('NETSUITE_REST_DEFAULT_LIMIT', 1000),
-
-        // Retry behavior
         'retries' => [
             'enabled' => env('NETSUITE_REST_RETRY', true),
             'max_attempts' => env('NETSUITE_REST_RETRY_MAX', 5),
             'base_delay_ms' => env('NETSUITE_REST_RETRY_BASE_DELAY_MS', 250),
             'max_delay_ms' => env('NETSUITE_REST_RETRY_MAX_DELAY_MS', 5000),
-
-            // Retry these HTTP status codes
             'statuses' => [429, 500, 502, 503, 504],
         ],
     ],
