@@ -2,7 +2,7 @@
 
 namespace Searsandrew\BriarRose;
 
-use SearsAndrew\BriarRose\Clients\RestletClient;
+use Searsandrew\BriarRose\Clients\RestletClient;
 
 class BriarRoseManager
 {

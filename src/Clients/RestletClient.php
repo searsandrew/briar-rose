@@ -7,7 +7,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use SearsAndrew\BriarRose\Exceptions\BriarRoseConfigurationException;
+use Searsandrew\BriarRose\Exceptions\BriarRoseConfigurationException;
 
 class RestletClient
 {
