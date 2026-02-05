@@ -23,8 +23,8 @@ return [
     |--------------------------------------------------------------------------
     | RESTlet
     |--------------------------------------------------------------------------
-    | Your working example:
-    | https://5802217.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1850&deploy=1
+    | Working example:
+    | https://0000000.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1850&deploy=1
     */
     'restlet_base_url' => env('NETSUITE_RESTLET_BASE_URL'),
 
@@ -32,12 +32,9 @@ return [
     |--------------------------------------------------------------------------
     | SuiteTalk REST (future expansion)
     |--------------------------------------------------------------------------
-    | We'll add helpers for:
+    | @todo Add helpers for:
     | - REST Record service
     | - SuiteQL query service
-    |
-    | Typical base patterns are account- and environment-dependent, so we leave
-    | this configurable and add builders later.
     */
     'rest_base_url' => env('NETSUITE_REST_BASE_URL'),
 
