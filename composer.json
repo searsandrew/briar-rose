@@ -1,0 +1,28 @@
+{
+  "name": "searsandrew/briar-rose",
+  "description": "NetSuite RESTlet + SuiteTalk REST client for Laravel (OAuth 1.0a TBA, HMAC-SHA256).",
+  "license": "MIT",
+  "type": "library",
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^10.0|^11.0|^12.0",
+    "illuminate/http": "^10.0|^11.0|^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Searsandrew\\BriarRose\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Searsandrew\\BriarRose\\BriarRoseServiceProvider"
+      ],
+      "aliases": {
+        "BriarRose": "Searsandrew\\BriarRose\\Facades\\BriarRose"
+      }
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}
