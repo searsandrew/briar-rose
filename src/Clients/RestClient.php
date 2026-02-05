@@ -23,16 +23,11 @@ class RestClient
         protected int $timeout = 30,
         protected int $connectTimeout = 10,
         protected bool $logRequests = false,
+        protected array $restOptions = [],
     ) {
         $this->guardConfigured();
     }
 
-    /**
-     * Generic REST request using relative paths (recommended).
-     *
-     * Example:
-     *   ->request('GET', '/services/rest/record/v1/inventoryItem/123')
-     */
     public function request(string $method, string $path, array $options = []): Response
     {
         $method = strtoupper($method);
@@ -42,11 +37,7 @@ class RestClient
         $query = $options['query'] ?? [];
         $json  = $options['json'] ?? null;
 
-        $authHeader = $this->getAuthHeader(
-            method: $method,
-            url: $url,
-            queryParams: $query
-        );
+        $authHeader = $this->getAuthHeader($method, $url, $query);
 
         $request = $this->http()->withHeaders([
             'Authorization' => $authHeader,
@@ -62,7 +53,6 @@ class RestClient
             $this->maybeLog($method, $url, $query, is_array($json) ? array_keys($json) : null);
         }
 
-        // Laravel Http supports ->send(method, url, options)
         $sendOptions = [];
         if (!empty($query)) {
             $sendOptions['query'] = $query;
@@ -71,7 +61,7 @@ class RestClient
             $sendOptions['json'] = $json;
         }
 
-        return $request->send($method, $url, $sendOptions);
+        return $this->sendWithRetries(fn () => $request->send($method, $url, $sendOptions));
     }
 
     public function get(string $path, array $query = [], array $headers = []): Response
@@ -99,17 +89,11 @@ class RestClient
         return $this->request('DELETE', $path, ['query' => $query, 'headers' => $headers]);
     }
 
-    /**
-     * REST Record endpoint builder.
-     */
     public function record(string $recordType): RecordEndpoint
     {
         return new RecordEndpoint($this, $recordType);
     }
 
-    /**
-     * SuiteQL helper.
-     */
     public function suiteql(): SuiteQLEndpoint
     {
         return new SuiteQLEndpoint($this);
@@ -120,23 +104,74 @@ class RestClient
         return rtrim($this->restBaseUrl ?: $this->defaultBaseEndpoint(), '/');
     }
 
+    public function restOptions(): array
+    {
+        return $this->restOptions;
+    }
+
     protected function buildUrl(string $path): string
     {
         $path = '/' . ltrim($path, '/');
-
         return $this->baseUrl() . $path;
     }
 
     protected function defaultBaseEndpoint(): string
     {
-        // Production and sandbox both use this pattern; sandbox account may look like 5802217_SB1.
         return 'https://' . $this->account . '.suitetalk.api.netsuite.com';
     }
 
-    /**
-     * OAuth 1.0a header builder.
-     * Includes query params in signature base string.
-     */
+    protected function sendWithRetries(callable $send): Response
+    {
+        $cfg = $this->restOptions['retries'] ?? [
+            'enabled' => true,
+            'max_attempts' => 5,
+            'base_delay_ms' => 250,
+            'max_delay_ms' => 5000,
+            'statuses' => [429, 500, 502, 503, 504],
+        ];
+
+        if (empty($cfg['enabled'])) {
+            return $send();
+        }
+
+        $maxAttempts = max(1, (int) ($cfg['max_attempts'] ?? 5));
+        $baseDelayMs = max(0, (int) ($cfg['base_delay_ms'] ?? 250));
+        $maxDelayMs  = max($baseDelayMs, (int) ($cfg['max_delay_ms'] ?? 5000));
+        $statuses    = (array) ($cfg['statuses'] ?? [429, 500, 502, 503, 504]);
+
+        $attempt = 1;
+
+        while (true) {
+            /** @var Response $response */
+            $response = $send();
+
+            if (!in_array($response->status(), $statuses, true) || $attempt >= $maxAttempts) {
+                return $response;
+            }
+
+            // Retry-After (seconds) if present, otherwise exponential backoff
+            $retryAfter = $response->header('Retry-After');
+            if (is_string($retryAfter) && ctype_digit($retryAfter)) {
+                $sleepMs = ((int) $retryAfter) * 1000;
+            } else {
+                // exponential backoff + small jitter
+                $sleepMs = min($maxDelayMs, (int) ($baseDelayMs * (2 ** ($attempt - 1))));
+                $sleepMs += random_int(0, 125);
+            }
+
+            if ($this->logRequests) {
+                Log::debug('Briar Rose REST retry', [
+                    'attempt' => $attempt,
+                    'status' => $response->status(),
+                    'sleep_ms' => $sleepMs,
+                ]);
+            }
+
+            usleep($sleepMs * 1000);
+            $attempt++;
+        }
+    }
+
     protected function getAuthHeader(string $method, string $url, array $queryParams = []): string
     {
         $oauthParams = [
@@ -153,7 +188,6 @@ class RestClient
 
         $allParams = $oauthParams;
 
-        // Merge query in URL itself (if any) + explicit queryParams
         if (isset($parsedUrl['query'])) {
             parse_str($parsedUrl['query'], $urlQueryParams);
             $allParams = array_merge($allParams, $urlQueryParams);

@@ -51,6 +51,13 @@ class RecordEndpoint
         return $this->client->get($this->basePath() . '/' . rawurlencode((string) $id), $query);
     }
 
+    public function getFields(int|string $id, array $fields): Response
+    {
+        return $this->get($id, [
+            'fields' => implode(',', $fields),
+        ]);
+    }
+
     public function create(array $payload): Response
     {
         return $this->client->post($this->basePath(), $payload);
@@ -75,6 +82,11 @@ class RecordEndpoint
         $eid = 'eid:' . $externalId;
 
         return $this->client->patch($this->basePath() . '/' . rawurlencode($eid), $payload);
+    }
+
+    public function where(string $q, array $query = []): Response
+    {
+        return $this->list(array_merge($query, ['q' => $q]));
     }
 
     protected function basePath(): string

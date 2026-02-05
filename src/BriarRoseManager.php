@@ -57,6 +57,7 @@ class BriarRoseManager
             timeout: $this->timeout,
             connectTimeout: $this->connectTimeout,
             logRequests: $this->logRequests,
+            restOptions: (array) config('briar-rose.rest', []),
         );
     }
 }
