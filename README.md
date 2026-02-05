@@ -52,8 +52,8 @@ Briar Rose supports configuration via **environment variables** (no config publi
 ### Required
 
 ```env
-NETSUITE_ACCOUNT=5802217
-NETSUITE_BASE_URL=https://5802217.suitetalk.api.netsuite.com
+NETSUITE_ACCOUNT=0000000
+NETSUITE_BASE_URL=https://0000000.suitetalk.api.netsuite.com
 
 NETSUITE_CONSUMER_KEY=...
 NETSUITE_CONSUMER_SECRET=...
@@ -72,10 +72,12 @@ NETSUITE_REST_RETRY_BASE_DELAY_MS=250
 NETSUITE_REST_RETRY_MAX_DELAY_MS=5000
 ```
 
-### Optional RESTlet base URL
+### Optional RESTlet connections
 
 ```env
-NETSUITE_RESTLET_BASE_URL=https://5802217.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=1850&deploy=1
+NETSUITE_RESTLET_BASE_URL=https://0000000.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=0000&deploy=1
+NETSUITE_RESTLET_SCRIPT_ID=...
+NETSUITE_RESTLET_DEPLOY_ID=1
 ```
 
 > Sandbox note: NetSuite sandbox account ids often use underscores in the OAuth realm. Briar Rose will normalize realm formatting for you.
@@ -97,7 +99,7 @@ use Searsandrew\BriarRose\Facades\BriarRose;
 ```php
 $response = BriarRose::rest()
     ->record('inventoryItem')
-    ->get(2336);
+    ->get(0000);
 
 $data = $response->json();
 ```
@@ -107,7 +109,7 @@ $data = $response->json();
 ```php
 $response = BriarRose::rest()
     ->record('inventoryItem')
-    ->getFields(2336, ['id', 'itemId', 'displayName']);
+    ->getFields(0000, ['id', 'itemId', 'displayName']);
 
 $data = $response->json();
 ```
@@ -196,11 +198,41 @@ $endpoint->hydrateAll(
 
 ## RESTlets
 
+### Requesting a RESTlet
+You can call any RESTlet deployed to your account via the script method.
+
+```php
+BriarRose::restlet()
+    ->script(0000, 1)
+    ->get(['listId' => 0000]);
+```
+
+### Requesting a RESTlet via the script ID + deploy ID
+If you have a single RESTlet script deployed, you can set enviromental variables to call it directly:
+> Note: This is the preferred method for production use if you have a single RESTlet script deployed.
+
+Set the deploy ID in the environment:
+```env
+    NETSUITE_RESTLET_SCRIPT_ID=... // Script ID of the deployed RESTlet
+    NETSUITE_RESTLET_DEPLOY_ID=1   // Booleans are 1 or 0
+```
+
+```php
+$response = BriarRose::restlet('000')
+    ->request('GET', ['listId' => 000]);
+```
+
+### Requesting a RESTlet via the base URL
 If you have a RESTlet base URL set, you can call it like this:
+
+Set the RESTlet base URL in the environment:
+```env
+    NETSUITE_RESTLET_BASE_URL=... // Be sure to set the Script ID of the RESTlet in the URL.
+```
 
 ```php
 $response = BriarRose::restlet()
-    ->request('GET', ['listId' => 238]);
+    ->request('GET', ['listId' => 000]);
 
 $data = $response->json();
 ```
@@ -224,7 +256,7 @@ Retries/backoff are enabled by default for common transient failures (429 / 5xx)
 ## Roadmap
 
 - SuiteQL endpoint helpers (paged queries, incremental sync patterns)
-- Better query/filter helpers (thin sugar over NetSuite syntax)
+- Better query/filter helpers
 - Additional first-class endpoints (as needed)
 
 ---
