@@ -21,7 +21,7 @@ class RecordEndpoint
 
     /**
      * Convenience for NetSuite collection filtering:
-     * ->where('isInactive IS false', ['limit' => 1000])
+     * ->where('isinactive IS false', ['limit' => 1000])
      *
      * NetSuite uses the "q" query parameter for record collection filtering.
      */
@@ -33,7 +33,7 @@ class RecordEndpoint
     }
 
     /**
-     * Generator that yields page Responses, following links.
+     * Generator that yields page Responses, following links.next if present.
      */
     public function listAll(array $query = []): \Generator
     {
@@ -57,7 +57,7 @@ class RecordEndpoint
 
     /**
      * Generator that yields *items* across all pages (not responses).
-     * Intended for streaming through a large collection.
+     * Great for streaming through a large collection.
      */
     public function listItemsAll(array $query = []): \Generator
     {
@@ -72,8 +72,32 @@ class RecordEndpoint
     }
 
     /**
+     * Generator of IDs across all pages.
+     *
+     * NetSuite record collections generally return items like:
+     *   ['id' => 123, 'links' => [...]]
+     *
+     * If your record type uses a different key, pass an extractor:
+     *   ->listItemIdsAll([], fn($item) => $item['internalId'] ?? null)
+     */
+    public function listItemIdsAll(array $query = [], ?callable $idExtractor = null): \Generator
+    {
+        $idExtractor ??= fn ($item) => $item['id'] ?? null;
+
+        foreach ($this->listItemsAll($query) as $item) {
+            $id = $idExtractor($item);
+
+            if ($id === null || $id === '') {
+                continue;
+            }
+
+            yield $id;
+        }
+    }
+
+    /**
      * Collect all items into an array.
-     * Important: Use this only when you're sure the result set is manageable.
+     * Use this only when you're sure the result set is manageable.
      */
     public function collectAllItems(array $query = []): array
     {
@@ -98,6 +122,69 @@ class RecordEndpoint
         return $this->get($id, [
             'fields' => implode(',', $fields),
         ]);
+    }
+
+    /**
+     * Hydrate many records by:
+     *  1) listing IDs (paged)
+     *  2) calling getFields(id, fields) for each
+     *
+     * Usage:
+     *  foreach ($endpoint->hydrateAll(['limit'=>1000], ['id','name']) as $row) { ... }
+     *
+     * Or provide a callback (no generator):
+     *  $endpoint->hydrateAll(['limit'=>1000], ['id','name'], fn($row, $id) => ...);
+     *
+     * Options:
+     * - $idExtractor: if collection items don't use "id"
+     * - $onRow: callback to process each hydrated row
+     * - $onError: callback for failed hydrate responses (default: skip)
+     * - $sleepMsBetween: optional throttle between instance calls
+     */
+    public function hydrateAll(
+        array $listQuery,
+        array $fields,
+        ?callable $onRow = null,
+        ?callable $idExtractor = null,
+        ?callable $onError = null,
+        int $sleepMsBetween = 0
+    ): \Generator|null {
+        $onError ??= function (Response $response, $id): void {
+            // default behavior: skip failures
+        };
+
+        $generator = (function () use ($listQuery, $fields, $onRow, $idExtractor, $onError, $sleepMsBetween) {
+            foreach ($this->listItemIdsAll($listQuery, $idExtractor) as $id) {
+                $resp = $this->getFields($id, $fields);
+
+                if (! $resp->successful()) {
+                    $onError($resp, $id);
+                    continue;
+                }
+
+                $row = $resp->json();
+
+                if (is_callable($onRow)) {
+                    $onRow($row, $id);
+                } else {
+                    yield $row;
+                }
+
+                if ($sleepMsBetween > 0) {
+                    usleep($sleepMsBetween * 1000);
+                }
+            }
+        })();
+
+        // If they provided a callback, just exhaust the generator and return null.
+        if (is_callable($onRow)) {
+            foreach ($generator as $_) {
+                // no-op
+            }
+            return null;
+        }
+
+        return $generator;
     }
 
     public function create(array $payload): Response
@@ -151,7 +238,6 @@ class RecordEndpoint
 
     protected function applyDefaultLimit(array $query): array
     {
-        // If user didn't specify paging, apply default_limit from config.
         if (!array_key_exists('limit', $query)) {
             $defaultLimit = $this->client->restOptions()['default_limit'] ?? null;
             if ($defaultLimit !== null) {
