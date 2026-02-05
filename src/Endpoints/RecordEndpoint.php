@@ -14,14 +14,31 @@ class RecordEndpoint
 
     public function list(array $query = []): Response
     {
+        $query = $this->applyDefaultLimit($query);
+
         return $this->client->get($this->basePath(), $query);
     }
 
     /**
-     * Generator that follows "links.next" if present.
+     * Convenience for NetSuite collection filtering:
+     * ->where('isInactive IS false', ['limit' => 1000])
+     *
+     * NetSuite uses the "q" query parameter for record collection filtering.
+     */
+    public function where(string $q, array $query = []): Response
+    {
+        $query['q'] = $q;
+
+        return $this->list($query);
+    }
+
+    /**
+     * Generator that yields page Responses, following links.
      */
     public function listAll(array $query = []): \Generator
     {
+        $query = $this->applyDefaultLimit($query);
+
         $path = $this->basePath();
         $nextUrl = null;
 
@@ -34,16 +51,37 @@ class RecordEndpoint
 
             yield $response;
 
-            $nextUrl = null;
-            if (is_array($json) && isset($json['links']) && is_array($json['links'])) {
-                foreach ($json['links'] as $link) {
-                    if (($link['rel'] ?? null) === 'next' && !empty($link['href'])) {
-                        $nextUrl = $link['href'];
-                        break;
-                    }
-                }
-            }
+            $nextUrl = $this->extractNextHref($json);
         } while ($nextUrl);
+    }
+
+    /**
+     * Generator that yields *items* across all pages (not responses).
+     * Intended for streaming through a large collection.
+     */
+    public function listItemsAll(array $query = []): \Generator
+    {
+        foreach ($this->listAll($query) as $page) {
+            $json = $page->json();
+            $items = is_array($json) ? ($json['items'] ?? []) : [];
+
+            foreach ($items as $item) {
+                yield $item;
+            }
+        }
+    }
+
+    /**
+     * Collect all items into an array.
+     * Important: Use this only when you're sure the result set is manageable.
+     */
+    public function collectAllItems(array $query = []): array
+    {
+        $all = [];
+        foreach ($this->listItemsAll($query) as $item) {
+            $all[] = $item;
+        }
+        return $all;
     }
 
     public function get(int|string $id, array $query = []): Response
@@ -51,6 +89,10 @@ class RecordEndpoint
         return $this->client->get($this->basePath() . '/' . rawurlencode((string) $id), $query);
     }
 
+    /**
+     * Request only certain fields for a record instance GET.
+     * NetSuite supports: ?fields=field1,field2,...
+     */
     public function getFields(int|string $id, array $fields): Response
     {
         return $this->get($id, [
@@ -84,11 +126,6 @@ class RecordEndpoint
         return $this->client->patch($this->basePath() . '/' . rawurlencode($eid), $payload);
     }
 
-    public function where(string $q, array $query = []): Response
-    {
-        return $this->list(array_merge($query, ['q' => $q]));
-    }
-
     protected function basePath(): string
     {
         return '/services/rest/record/v1/' . $this->normalizeRecordType($this->recordType);
@@ -98,7 +135,6 @@ class RecordEndpoint
     {
         $type = trim($type);
 
-        // If snake_case or kebab-case, convert to camelCase.
         if (str_contains($type, '_') || str_contains($type, '-')) {
             $type = str_replace('-', '_', $type);
             $parts = array_filter(explode('_', $type), fn ($p) => $p !== '');
@@ -111,6 +147,39 @@ class RecordEndpoint
         }
 
         return $type;
+    }
+
+    protected function applyDefaultLimit(array $query): array
+    {
+        // If user didn't specify paging, apply default_limit from config.
+        if (!array_key_exists('limit', $query)) {
+            $defaultLimit = $this->client->restOptions()['default_limit'] ?? null;
+            if ($defaultLimit !== null) {
+                $query['limit'] = (int) $defaultLimit;
+            }
+        }
+
+        return $query;
+    }
+
+    protected function extractNextHref($json): ?string
+    {
+        if (!is_array($json)) {
+            return null;
+        }
+
+        $links = $json['links'] ?? null;
+        if (!is_array($links)) {
+            return null;
+        }
+
+        foreach ($links as $link) {
+            if (($link['rel'] ?? null) === 'next' && !empty($link['href'])) {
+                return $link['href'];
+            }
+        }
+
+        return null;
     }
 
     protected function relativeFromAbsolute(string $absoluteUrl): string
