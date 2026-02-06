@@ -213,8 +213,8 @@ If you have a single RESTlet script deployed, you can set enviromental variables
 
 Set the deploy ID in the environment:
 ```env
-    NETSUITE_RESTLET_SCRIPT_ID=... // Script ID of the deployed RESTlet
-    NETSUITE_RESTLET_DEPLOY_ID=1   // Booleans are 1 or 0
+NETSUITE_RESTLET_SCRIPT_ID=... // Script ID of the deployed RESTlet
+NETSUITE_RESTLET_DEPLOY_ID=1   // Booleans are 1 or 0
 ```
 
 ```php
@@ -227,7 +227,7 @@ If you have a RESTlet base URL set, you can call it like this:
 
 Set the RESTlet base URL in the environment:
 ```env
-    NETSUITE_RESTLET_BASE_URL=... // Be sure to set the Script ID of the RESTlet in the URL.
+NETSUITE_RESTLET_BASE_URL=... // Be sure to set the Script ID of the RESTlet in the URL.
 ```
 
 ```php

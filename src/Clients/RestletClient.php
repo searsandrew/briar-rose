@@ -124,7 +124,17 @@ class RestletClient
             'Authorization' => $authHeader,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ]);
+        ])->connectTimeout((int) env('BRIAR_ROSE_CONNECT_TIMEOUT', 10))
+        ->timeout((int) env('BRIAR_ROSE_TIMEOUT', 60))
+        ->retry(
+            (int) env('BRIAR_ROSE_RETRY', 3),
+            (int) env('BRIAR_ROSE_RETRY_SLEEP_MS', 250),
+            function ($exception, $request) use ($method) {
+                // Retry only safe/idempotent methods by default
+                return in_array($method, ['GET', 'HEAD'], true);
+            },
+            throw: false
+        );
 
         if ($method === 'GET') {
             if (! empty($data)) {
