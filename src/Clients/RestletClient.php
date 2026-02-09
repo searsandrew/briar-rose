@@ -77,7 +77,7 @@ class RestletClient
 
     /**
      * Back-compat: do a raw request against either:
-     * - the built URL (script/deploy/default), OR
+     * - the built URL (script/deploy/default) OR
      * - a provided URL.
      */
     public function request(string $method, array $data = [], ?string $url = null): Response
@@ -94,7 +94,7 @@ class RestletClient
         // Determine base endpoint
         $base = $this->restletBaseUrl ?: $this->defaultBaseEndpoint();
 
-        // If base already has query params, we merge/override script/deploy
+        // If the base already has query params, we merge/override script/deploy
         if ($script !== null) {
             $base = $this->mergeQueryParams($base, [
                 'script' => (string) $script,
@@ -124,11 +124,11 @@ class RestletClient
             'Authorization' => $authHeader,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->connectTimeout((int) env('BRIAR_ROSE_CONNECT_TIMEOUT', 10))
-        ->timeout((int) env('BRIAR_ROSE_TIMEOUT', 60))
+        ])->connectTimeout((int) config('briar-rose.connect_timeout'))
+        ->timeout((int) config('briar-rose.timeout', 60))
         ->retry(
-            (int) env('BRIAR_ROSE_RETRY', 3),
-            (int) env('BRIAR_ROSE_RETRY_SLEEP_MS', 250),
+            (int) config('briar-rose.retry'),
+            (int) config('briar-rose.retry_sleep_ms'),
             function ($exception, $request) use ($method) {
                 // Retry only safe/idempotent methods by default
                 return in_array($method, ['GET', 'HEAD'], true);

@@ -64,6 +64,8 @@ return [
     */
     'timeout' => env('NETSUITE_TIMEOUT', 30),
     'connect_timeout' => env('NETSUITE_CONNECT_TIMEOUT', 10),
+    'retry' => env('NETSUITE_RETRY', 3),
+    'retry_sleep_ms' => env('NETSUITE_RETRY_SLEEP_MS', 250),
 
     /*
     |--------------------------------------------------------------------------
