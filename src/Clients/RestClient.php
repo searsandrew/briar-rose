@@ -121,7 +121,12 @@ class RestClient
 
     protected function buildUrl(string $path): string
     {
+        if (Str::startsWith($path, ['http://', 'https://'])) {
+            return $path;
+        }
+
         $path = '/' . ltrim($path, '/');
+
         return $this->baseUrl() . $path;
     }
 
