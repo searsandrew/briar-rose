@@ -21,26 +21,8 @@
 
 ### Composer
 
-For now (GitHub repo), add the repo to your app’s `composer.json`:
-
-```json
-{
-  "repositories": [
-    {
-      "type": "vcs",
-      "url": "git@github.com:searsandrew/briar-rose.git"
-    }
-  ],
-  "require": {
-    "searsandrew/briar-rose": "^0.2"
-  }
-}
-```
-
-Then:
-
 ```bash
-composer update searsandrew/briar-rose
+composer require searsandrew/briar-rose
 ```
 
 ---
