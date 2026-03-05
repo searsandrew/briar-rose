@@ -22,6 +22,9 @@ class SuiteQLEndpoint
      */
     public function query(string $sql, array $queryParams = [], array $headers = []): Response
     {
+        // Fixes small issue with NetSuite-required header not being reliably assigned
+        $headers = array_merge(['Prefer' => 'transient'], $headers);
+
         return $this->client->post(
             path: '/services/rest/query/v1/suiteql',
             json: ['q' => $sql],
