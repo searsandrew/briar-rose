@@ -16,7 +16,7 @@
 - Guzzle ^7.5 or ^8.0
 - NetSuite OAuth 1.0a integration (Consumer Key/Secret + Token ID/Secret)
 
-CI currently tests Laravel 11 through 13. Laravel 10 remains install-compatible but is no longer included in CI because Composer blocks its available releases due to active security advisories.
+CI currently tests Laravel 12 and 13. Laravel 10 and 11 remain install-compatible but are no longer included in CI because Composer blocks their available releases due to active security advisories.
 
 ---
 
