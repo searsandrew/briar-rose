@@ -11,32 +11,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Laravel 10
-          - php: "8.2"
-            laravel: "10.*"
-            testbench: "^8.0"
-            pest: "^2.0"
-
-          # Laravel 11
-          - php: "8.2"
-            laravel: "11.*"
-            testbench: "^9.0"
-            pest: "^3.0"
-          - php: "8.3"
-            laravel: "11.*"
-            testbench: "^9.0"
-            pest: "^3.0"
-
           # Laravel 12
+          - php: "8.2"
+            laravel: "12.*"
+            testbench: "^10.0"
+            pest: "^3.0"
+            pest_plugin_laravel: "^3.0"
           - php: "8.3"
             laravel: "12.*"
             testbench: "^10.0"
             pest: "^3.0"
+            pest_plugin_laravel: "^3.0"
+
+          # Laravel 13
+          - php: "8.3"
+            laravel: "13.*"
+            testbench: "^11.0"
+            pest: "^4.0"
+            pest_plugin_laravel: "^4.0"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: shivammathur/setup-php@v2
+        # noinspection UndefinedParamsPresent -- valid setup-php inputs
         with:
           php-version: ${{ matrix.php }}
           coverage: none
@@ -47,15 +45,11 @@ jobs:
             "laravel/framework:${{ matrix.laravel }}" \
             "orchestra/testbench:${{ matrix.testbench }}" \
             "pestphp/pest:${{ matrix.pest }}" \
+            "pestphp/pest-plugin-laravel:${{ matrix.pest_plugin_laravel }}" \
             --no-interaction --no-update -W
 
       - name: Install dependencies
         run: composer update --prefer-dist --no-interaction -W
-
-      - name: Ensure Unit dir exists (Pest 2 expects it sometimes)
-        run: |
-          mkdir -p tests/Unit
-          touch tests/Unit/.gitkeep
 
       - name: Run tests
         run: ./vendor/bin/pest

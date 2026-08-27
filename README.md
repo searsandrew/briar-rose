@@ -1,19 +1,22 @@
-# briar-rose
-
+# Briar Rose
 
 **Briar Rose** is a Laravel-friendly NetSuite client that supports:
 
 - **SuiteTalk REST Web Services (REST Record)** via OAuth 1.0a (HMAC-SHA256)
+- **SuiteQL** queries via SuiteTalk REST Web Services
 - **RESTlets** via OAuth 1.0a (HMAC-SHA256)
-- Developer ergonomics: relative paths, pagination helpers, hydration helpers, retries/backoff.
+- Developer ergonomics including relative paths, pagination and hydration helpers, and configurable retries with backoff
 
 ---
 
 ## Requirements
 
 - PHP ^8.2
-- Laravel 10 / 11 / 12 (via illuminate components)
+- Laravel 10, 11, 12, or 13 (via Illuminate components)
+- Guzzle ^7.5 or ^8.0
 - NetSuite OAuth 1.0a integration (Consumer Key/Secret + Token ID/Secret)
+
+CI currently tests Laravel 12 and 13. Laravel 10 and 11 remain install-compatible but are no longer included in CI because Composer blocks their available releases due to active security advisories.
 
 ---
 
@@ -25,6 +28,8 @@
 composer require searsandrew/briar-rose
 ```
 
+Laravel discovers the service provider and facade automatically.
+
 ---
 
 ## Configuration
@@ -35,13 +40,15 @@ Briar Rose supports configuration via **environment variables** (no config publi
 
 ```env
 NETSUITE_ACCOUNT=0000000
-NETSUITE_BASE_URL=https://0000000.suitetalk.api.netsuite.com
+NETSUITE_REST_BASE_URL=https://0000000.suitetalk.api.netsuite.com
 
 NETSUITE_CONSUMER_KEY=...
 NETSUITE_CONSUMER_SECRET=...
 NETSUITE_TOKEN_ID=...
 NETSUITE_TOKEN_SECRET=...
 ```
+
+`NETSUITE_REST_BASE_URL` is optional; when omitted, Briar Rose builds the standard SuiteTalk URL from `NETSUITE_ACCOUNT`. The legacy `NETSUITE_BASE_URL` variable is also supported.
 
 ### Optional REST defaults
 
@@ -147,6 +154,25 @@ $page = $response->json();
 
 ---
 
+## SuiteQL
+
+Run a SuiteQL query using the SuiteTalk REST query endpoint:
+
+```php
+$response = BriarRose::rest()
+    ->suiteql()
+    ->query(
+        "SELECT id, entityid FROM customer WHERE isinactive = 'F'",
+        ['limit' => 1000, 'offset' => 0]
+    );
+
+$page = $response->json();
+```
+
+Briar Rose automatically sends the `Prefer: transient` header required by NetSuite. The second argument contains URL query parameters such as `limit` and `offset`. SuiteQL values must be included in the query string, so validate or allow-list any dynamic input before constructing a query.
+
+---
+
 ## Hydration helper (list → getFields)
 
 Collection endpoints typically return **id + links**, not full records.
@@ -190,7 +216,7 @@ BriarRose::restlet()
 ```
 
 ### Requesting a RESTlet via the script ID + deploy ID
-If you have a single RESTlet script deployed, you can set enviromental variables to call it directly:
+If you have a single RESTlet script deployed, you can set environment variables to call it directly:
 > Note: This is the preferred method for production use if you have a single RESTlet script deployed.
 
 Set the deploy ID in the environment:
@@ -237,7 +263,7 @@ Retries/backoff are enabled by default for common transient failures (429 / 5xx)
 
 ## Roadmap
 
-- SuiteQL endpoint helpers (paged queries, incremental sync patterns)
+- SuiteQL pagination and incremental sync helpers
 - Better query/filter helpers
 - Additional first-class endpoints (as needed)
 
